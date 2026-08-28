@@ -82,8 +82,8 @@
     <h2>Current order</h2>
     <div id="lines"></div>
     <div class="totals">
-      <div class="row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
-      <div class="row grand"><span>Total</span><span id="total">$0.00</span></div>
+      <div class="row"><span>Subtotal</span><span id="subtotal">KSh 0.00</span></div>
+      <div class="row grand"><span>Total</span><span id="total">KSh 0.00</span></div>
     </div>
     <select id="payment">
       <option value="card">Card</option>
@@ -139,7 +139,7 @@ function renderProducts() {
   el.innerHTML = products.map(p => `
     <div class="card glass" data-id="${p.id}">
       <div class="name">${p.name}</div>
-      <div class="price">$${p.price.toFixed(2)}</div>
+      <div class="price">KSh ${p.price.toFixed(2)}</div>
       <div class="stock">${p.grams_per_unit ? Math.floor(p.stock_grams / p.grams_per_unit) + ' in stock' : ''}</div>
     </div>
   `).join('');
@@ -162,10 +162,10 @@ function renderCart() {
     const p = products.find(pr => pr.id === item.product_id);
     const lineTotal = p.price * item.quantity;
     subtotal += lineTotal;
-    return `<div class="line"><span>${item.quantity}x ${p.name}</span><span>$${lineTotal.toFixed(2)}</span></div>`;
+    return `<div class="line"><span>${item.quantity}x ${p.name}</span><span>KSh ${lineTotal.toFixed(2)}</span></div>`;
   }).join('');
-  document.getElementById('subtotal').textContent = '$' + subtotal.toFixed(2);
-  document.getElementById('total').textContent = '$' + subtotal.toFixed(2);
+  document.getElementById('subtotal').textContent = 'KSh ' + subtotal.toFixed(2);
+  document.getElementById('total').textContent = 'KSh ' + subtotal.toFixed(2);
   document.getElementById('checkout').disabled = cart.length === 0;
 }
 
@@ -182,7 +182,7 @@ async function loadMyTickets() {
   el.innerHTML = orders.map(o => `
     <div class="ticket glass">
       <span>#${o.daily_number || o.id} · ${o.payment_method} · ${new Date(o.created_at).toLocaleTimeString()}</span>
-      <span>$${o.total.toFixed(2)}</span>
+      <span>KSh ${o.total.toFixed(2)}</span>
     </div>
   `).join('');
 }
@@ -190,7 +190,7 @@ async function loadMyTickets() {
 function showReceipt(order) {
   const empName = order.employee_name || document.querySelector('#employee option:checked')?.textContent || '';
   const rows = order.items.map(it => `
-    <tr><td>${it.quantity}x ${it.name}</td><td style="text-align:right;">$${it.line_total.toFixed(2)}</td></tr>
+    <tr><td>${it.quantity}x ${it.name}</td><td style="text-align:right;">KSh ${it.line_total.toFixed(2)}</td></tr>
   `).join('');
   document.getElementById('receipt').innerHTML = `
     <h2>KAFA!N AND CO</h2>
@@ -201,9 +201,9 @@ function showReceipt(order) {
     <table>${rows}</table>
     <hr/>
     <table>
-      <tr><td>Subtotal</td><td style="text-align:right;">$${order.subtotal.toFixed(2)}</td></tr>
-      <tr><td>Tax</td><td style="text-align:right;">$${order.tax.toFixed(2)}</td></tr>
-      <tr><td><b>Total</b></td><td style="text-align:right;"><b>$${order.total.toFixed(2)}</b></td></tr>
+      <tr><td>Subtotal</td><td style="text-align:right;">KSh ${order.subtotal.toFixed(2)}</td></tr>
+      <tr><td>Tax</td><td style="text-align:right;">KSh ${order.tax.toFixed(2)}</td></tr>
+      <tr><td><b>Total</b></td><td style="text-align:right;"><b>KSh ${order.total.toFixed(2)}</b></td></tr>
     </table>
     <div class="center" style="margin-top:10px;">Thank you!</div>
   `;
@@ -234,7 +234,7 @@ document.getElementById('checkout').addEventListener('click', async () => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Order failed');
-    msg.textContent = 'Order #' + data.daily_number + ' charged — $' + data.total.toFixed(2);
+    msg.textContent = 'Order #' + data.daily_number + ' charged — KSh ' + data.total.toFixed(2);
     msg.className = 'msg ok';
     showReceipt(data);
     cart = [];
