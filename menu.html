@@ -37,7 +37,7 @@
   <div id="items"></div>
   <div class="bar glass">
     <div class="row"><span>Items in cart</span><span id="count">0</span></div>
-    <div class="row"><span>Total</span><span id="total">$0.00</span></div>
+    <div class="row"><span>Total</span><span id="total">KSh 0.00</span></div>
     <input type="email" id="email" placeholder="Email for order + loyalty points" />
     <button class="primary" id="order" disabled>Place order</button>
     <div id="msg"></div>
@@ -59,7 +59,7 @@ function render() {
     <div class="item glass">
       <div>
         <div class="name">${p.name}</div>
-        <div class="price">$${p.price.toFixed(2)}</div>
+        <div class="price">KSh ${p.price.toFixed(2)}</div>
       </div>
       <button data-id="${p.id}">Add</button>
     </div>
@@ -81,7 +81,7 @@ function updateBar() {
     total += p.price * cart[id];
   }
   document.getElementById('count').textContent = count;
-  document.getElementById('total').textContent = '$' + total.toFixed(2);
+  document.getElementById('total').textContent = 'KSh ' + total.toFixed(2);
   document.getElementById('order').disabled = count === 0;
 }
 
@@ -105,7 +105,7 @@ document.getElementById('order').addEventListener('click', async () => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Order failed');
-    msg.textContent = 'Order #' + data.order_id + ' placed — $' + data.total.toFixed(2);
+    msg.textContent = 'Order #' + data.order_id + ' placed — KSh ' + data.total.toFixed(2);
     msg.className = 'msg ok';
     cart = {};
     updateBar();
