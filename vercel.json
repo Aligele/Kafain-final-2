@@ -1,5 +1,5 @@
+
 {
-  "outputDirectory": "public",
   "rewrites": [
     { "source": "/pos", "destination": "/pos.html" },
     { "source": "/admin", "destination": "/admin.html" },
