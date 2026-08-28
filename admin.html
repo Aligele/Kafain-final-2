@@ -99,8 +99,8 @@
           <input type="text" id="p_category" placeholder="Category (hot_cup, bag, pastry...)" />
         </div>
         <div class="row2">
-          <input type="number" step="0.01" id="p_price" placeholder="Sell price ($)" />
-          <input type="number" step="0.01" id="p_cost" placeholder="Cost ($)" />
+          <input type="number" step="0.01" id="p_price" placeholder="Sell price (KSh)" />
+          <input type="number" step="0.01" id="p_cost" placeholder="Cost (KSh)" />
         </div>
         <div class="row2">
           <input type="number" id="p_stock" placeholder="Starting stock (grams, or units)" />
@@ -126,7 +126,7 @@
 <script>
 let adminKey = 'open';
 
-function fmt(n) { return '$' + Number(n).toFixed(2); }
+function fmt(n) { return 'KSh ' + Number(n).toFixed(2); }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 
 async function api(path, opts = {}) {
