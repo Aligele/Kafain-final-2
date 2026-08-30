@@ -1,10 +1,8 @@
-
 {
   "rewrites": [
     { "source": "/pos", "destination": "/pos.html" },
     { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/menu", "destination": "/menu.html" }
+    { "source": "/menu", "destination": "/menu.html" },
+    { "source": "/finance", "destination": "/finance.html" }
   ]
 }
-
-

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kafa!n and Co — Finance</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    margin: 0; color: #f4f1ea; min-height: 100vh;
+    background-color: #1c1410;
+    background-image: linear-gradient(180deg, rgba(20,14,9,0.78), rgba(20,14,9,0.90)), url('https://raw.githubusercontent.com/Aligele/kafain-pos/main/cafe-bg.jpg');
+    background-size: cover; background-position: center; background-attachment: fixed;
+  }
+  a { color: #d8b26a; }
+  header { padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  header h1 { margin: 0; font-size: 18px; }
+  .backlink { font-size: 12px; opacity: 0.8; }
+  .wrap { max-width: 700px; margin: 0 auto; padding: 16px; }
+  .glass { background: rgba(30,22,16,0.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.10); }
+  .gate { max-width: 340px; margin: 60px auto; border-radius: 14px; padding: 24px; text-align: center; }
+  input, button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); font-size: 14px; background: rgba(255,255,255,0.06); color: #f4f1ea; }
+  input::placeholder { color: #b8ab98; }
+  button { background: #d8b26a; color: #241a10; border: none; cursor: pointer; font-weight: 600; }
+  button.secondary { background: rgba(255,255,255,0.08); color: #f4f1ea; }
+  .msg { font-size: 13px; margin-top: 8px; padding: 8px; border-radius: 6px; }
+  .msg.ok { background: rgba(70,150,90,0.25); color: #b6e6c2; }
+  .msg.err { background: rgba(180,60,60,0.25); color: #f3b8b8; }
+  .ticket { border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  .ticket .top { display: flex; justify-content: space-between; font-size: 13px; opacity: 0.85; margin-bottom: 6px; }
+  .ticket .items { font-size: 13px; margin: 8px 0; }
+  .ticket .items div { display: flex; justify-content: space-between; padding: 2px 0; }
+  .ticket .total { font-size: 16px; font-weight: 700; text-align: right; margin: 8px 0; }
+  .ticket .actions { display: flex; gap: 8px; }
+  .ticket .actions button { width: auto; flex: 1; padding: 10px; }
+  .empty { text-align: center; opacity: 0.7; padding: 40px 0; }
+</style>
+</head>
+<body>
+<div id="gateScreen" class="gate glass">
+  <h2 style="margin-top:0;font-size:16px;">Finance login</h2>
+  <input type="text" id="financeName" placeholder="Your name" />
+  <input type="password" id="financeKey" placeholder="Passcode" />
+  <button id="enterBtn">Log in</button>
+  <div id="gateMsg" class="msg"></div>
+</div>
+
+<div id="dashboard" style="display:none;">
+  <header><h1>Kafa!n and Co — Finance <a class="backlink" href="/">· Home</a></h1></header>
+  <div class="wrap">
+    <h3>Pending payments</h3>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+let financeKey = sessionStorage.getItem('kafain_finance_key') || '';
+function fmt(n) { return 'KSh ' + Number(n).toFixed(2); }
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': financeKey, ...(opts.headers || {}) },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+document.getElementById('enterBtn').addEventListener('click', async () => {
+  financeKey = document.getElementById('financeKey').value;
+  const gateMsg = document.getElementById('gateMsg');
+  if (!financeKey) { gateMsg.textContent = 'Enter the passcode first.'; gateMsg.className = 'msg err'; return; }
+  try {
+    await api('/api/finance/pending');
+    sessionStorage.setItem('kafain_finance_key', financeKey);
+    enterDashboard();
+  } catch (err) {
+    gateMsg.textContent = 'Incorrect passcode.';
+    gateMsg.className = 'msg err';
+  }
+});
+
+function enterDashboard() {
+  document.getElementById('gateScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  loadPending();
+}
+
+async function loadPending() {
+  const list = document.getElementById('list');
+  const orders = await api('/api/finance/pending');
+  if (!orders.length) {
+    list.innerHTML = '<div class="empty">No pending receipts right now.</div>';
+    return;
+  }
+  list.innerHTML = orders.map(o => `
+    <div class="ticket glass" data-id="${o.id}">
+      <div class="top">
+        <span>#${o.daily_number} · ${o.employee_name} · ${new Date(o.created_at).toLocaleTimeString()}</span>
+        <span>${o.channel}</span>
+      </div>
+      <div class="items">
+        ${o.items.map(it => `<div><span>${it.quantity}x ${it.name}</span><span>${fmt(it.line_total)}</span></div>`).join('')}
+      </div>
+      <div class="total">Total: ${fmt(o.total)}</div>
+      <div class="actions">
+        <button class="secondary" onclick="confirmPay(${o.id}, 'cash')">💵 Cash received</button>
+        <button class="secondary" onclick="confirmPay(${o.id}, 'mpesa')">📱 M-Pesa received</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.confirmPay = async function(orderId, method) {
+  try {
+    await api('/api/finance/confirm', { method: 'POST', body: JSON.stringify({ order_id: orderId, payment_method: method }) });
+    loadPending();
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
+if (financeKey) {
+  api('/api/finance/pending').then(enterDashboard).catch(() => {
+    sessionStorage.removeItem('kafain_finance_key');
+  });
+}
+</script>
+</body>
+</html>
