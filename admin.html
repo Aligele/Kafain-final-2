@@ -124,7 +124,7 @@
 </div>
 
 <script>
-let adminKey = 'open';
+let adminKey = sessionStorage.getItem('kafain_admin_key') || '';
 
 function fmt(n) { return 'KSh ' + Number(n).toFixed(2); }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
@@ -201,8 +201,17 @@ async function loadSales() {
     summary.by_channel.map(r => `<tr><td>${r.channel}</td><td>${r.orders_count}</td><td>${fmt(r.total)}</td></tr>`).join('');
 
   const orders = await api('/api/admin/orders?date=' + date);
-  document.getElementById('orders').innerHTML = '<tr><th>#</th><th>Waiter</th><th>Channel</th><th>Payment</th><th>Total</th><th>Time</th></tr>' +
-    orders.map(o => `<tr><td>${o.daily_number || o.id}</td><td>${o.employee_name}</td><td>${o.channel}</td><td>${o.payment_method}</td><td>${fmt(o.total)}</td><td>${new Date(o.created_at).toLocaleTimeString()}</td></tr>`).join('');
+  document.getElementById('orders').innerHTML = '<tr><th>#</th><th>Waiter</th><th>Channel</th><th>Payment</th><th>Status</th><th>Total</th><th>Time</th><th></th></tr>' +
+    orders.map(o => `<tr>
+      <td>${o.daily_number || o.id}</td>
+      <td>${o.employee_name}</td>
+      <td>${o.channel}</td>
+      <td>${o.payment_method}</td>
+      <td>${o.status === 'pending' ? '⏳ Pending' : o.status === 'cancelled' ? '❌ Cancelled' : '✅ Paid'}</td>
+      <td>${fmt(o.total)}</td>
+      <td>${new Date(o.created_at).toLocaleTimeString()}</td>
+      <td>${o.status === 'pending' ? `<button class="small secondary" onclick="cancelOrder(${o.id})">Cancel</button>` : ''}</td>
+    </tr>`).join('');
 
   const closeBtn = document.getElementById('closeDayBtn');
   closeBtn.disabled = !!summary.closed;
@@ -258,6 +267,16 @@ async function loadProducts() {
     `).join('');
 }
 
+window.cancelOrder = async function(orderId) {
+  if (!confirm('Cancel this order? Stock will be restored.')) return;
+  try {
+    await api('/api/admin/cancel-order', { method: 'POST', body: JSON.stringify({ order_id: orderId }) });
+    loadSales();
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
 window.restock = async function(id) {
   const grams = prompt('Add how many grams (or units) of stock?');
   if (!grams) return;
@@ -298,7 +317,11 @@ document.getElementById('addProductBtn').addEventListener('click', async () => {
   }
 });
 
-enterDashboard();
+if (adminKey) {
+  api('/api/admin/summary?date=' + todayStr()).then(enterDashboard).catch(() => {
+    sessionStorage.removeItem('kafain_admin_key');
+  });
+}
 </script>
 </body>
 </html>
