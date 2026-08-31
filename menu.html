@@ -29,6 +29,17 @@
   .msg { font-size: 13px; margin-top: 8px; padding: 8px; border-radius: 6px; }
   .msg.ok { background: rgba(70,150,90,0.25); color: #b6e6c2; }
   .msg.err { background: rgba(180,60,60,0.25); color: #f3b8b8; }
+
+  button, .card, a.role, .ticket { transition: transform .12s ease, box-shadow .12s ease, background .12s ease; }
+  button:active, .card:active { transform: scale(0.96); }
+  a.role:active { transform: scale(0.98); }
+  .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+  @keyframes popIn { 0% { opacity:0; transform: scale(0.9) translateY(6px); } 100% { opacity:1; transform: scale(1) translateY(0); } }
+  @keyframes toastSlide { 0% { opacity:0; transform: translateY(-8px); } 100% { opacity:1; transform: translateY(0); } }
+  .msg { animation: toastSlide .25s ease; }
+  .msg.ok { box-shadow: 0 0 0 1px rgba(70,150,90,0.4); }
+  .checkmark { width:56px; height:56px; border-radius:50%; background:rgba(70,150,90,0.25); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; animation: popIn .35s ease; }
+  .checkmark svg { width:28px; height:28px; }
 </style>
 </head>
 <body>
