@@ -35,6 +35,17 @@
   .ticket .actions { display: flex; gap: 8px; }
   .ticket .actions button { width: auto; flex: 1; padding: 10px; }
   .empty { text-align: center; opacity: 0.7; padding: 40px 0; }
+
+  button, .card, a.role, .ticket { transition: transform .12s ease, box-shadow .12s ease, background .12s ease; }
+  button:active, .card:active { transform: scale(0.96); }
+  a.role:active { transform: scale(0.98); }
+  .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+  @keyframes popIn { 0% { opacity:0; transform: scale(0.9) translateY(6px); } 100% { opacity:1; transform: scale(1) translateY(0); } }
+  @keyframes toastSlide { 0% { opacity:0; transform: translateY(-8px); } 100% { opacity:1; transform: translateY(0); } }
+  .msg { animation: toastSlide .25s ease; }
+  .msg.ok { box-shadow: 0 0 0 1px rgba(70,150,90,0.4); }
+  .checkmark { width:56px; height:56px; border-radius:50%; background:rgba(70,150,90,0.25); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; animation: popIn .35s ease; }
+  .checkmark svg { width:28px; height:28px; }
 </style>
 </head>
 <body>
@@ -88,6 +99,22 @@ function enterDashboard() {
   loadPending();
 }
 
+function playSuccessBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(880, ctx.currentTime);
+    o.frequency.setValueAtTime(1175, ctx.currentTime + 0.09);
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+    o.start();
+    o.stop(ctx.currentTime + 0.28);
+  } catch (e) { /* ignore */ }
+}
+
 async function loadPending() {
   const list = document.getElementById('list');
   const orders = await api('/api/finance');
@@ -116,7 +143,16 @@ async function loadPending() {
 window.confirmPay = async function(orderId, method) {
   try {
     await api('/api/finance', { method: 'POST', body: JSON.stringify({ order_id: orderId, payment_method: method }) });
-    loadPending();
+    playSuccessBeep();
+    const el = document.querySelector(`.ticket[data-id="${orderId}"]`);
+    if (el) {
+      el.style.transition = 'opacity .3s ease, transform .3s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.95) translateX(20px)';
+      setTimeout(loadPending, 300);
+    } else {
+      loadPending();
+    }
   } catch (err) {
     alert(err.message);
   }
