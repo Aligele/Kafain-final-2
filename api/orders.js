@@ -52,7 +52,7 @@ export default async function handler(req, res) {
 
     const { data: order, error: oErr } = await supabase.from("orders").insert({
       customer_id: customerId, employee_id: employee_id || null, channel,
-      payment_method: payment_method || "unspecified", subtotal, tax, total, daily_number: dailyNumber,
+      payment_method: payment_method || "pending", status: "pending", subtotal, tax, total, daily_number: dailyNumber,
     }).select("id, created_at").single();
     if (oErr) throw oErr;
 
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     }
 
     return res.status(201).json({
-      order_id: order.id, daily_number: dailyNumber, subtotal, tax, total,
+      order_id: order.id, daily_number: dailyNumber, subtotal, tax, total, status: "pending",
       customer_id: customerId, employee_name: employeeName, created_at: order.created_at, items: receiptItems,
     });
   } catch (err) {
