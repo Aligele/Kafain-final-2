@@ -66,6 +66,17 @@
     #receiptActions { display: none; }
     #receiptOverlay { background: none; position: static; }
   }
+
+  button, .card, a.role, .ticket { transition: transform .12s ease, box-shadow .12s ease, background .12s ease; }
+  button:active, .card:active { transform: scale(0.96); }
+  a.role:active { transform: scale(0.98); }
+  .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+  @keyframes popIn { 0% { opacity:0; transform: scale(0.9) translateY(6px); } 100% { opacity:1; transform: scale(1) translateY(0); } }
+  @keyframes toastSlide { 0% { opacity:0; transform: translateY(-8px); } 100% { opacity:1; transform: translateY(0); } }
+  .msg { animation: toastSlide .25s ease; }
+  .msg.ok { box-shadow: 0 0 0 1px rgba(70,150,90,0.4); }
+  .checkmark { width:56px; height:56px; border-radius:50%; background:rgba(70,150,90,0.25); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; animation: popIn .35s ease; }
+  .checkmark svg { width:28px; height:28px; }
 </style>
 </head>
 <body>
@@ -101,9 +112,11 @@
   <div>
     <div id="receipt"></div>
     <div id="receiptActions">
+      <button class="secondary" id="btPrintBtn">📶 Bluetooth print</button>
       <button class="secondary" id="printBtn">🖨️ Print</button>
       <button class="secondary" id="closeReceiptBtn">Close</button>
     </div>
+    <div id="btMsg" class="msg" style="display:none;"></div>
   </div>
 </div>
 
@@ -186,12 +199,30 @@ async function loadMyTickets() {
   `).join('');
 }
 
+function playSuccessBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(880, ctx.currentTime);
+    o.frequency.setValueAtTime(1175, ctx.currentTime + 0.09);
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+    o.start();
+    o.stop(ctx.currentTime + 0.28);
+  } catch (e) { /* audio not available, ignore */ }
+}
+
 function showReceipt(order) {
+  playSuccessBeep();
   const empName = order.employee_name || document.querySelector('#employee option:checked')?.textContent || '';
   const rows = order.items.map(it => `
     <tr><td>${it.quantity}x ${it.name}</td><td style="text-align:right;">KSh ${it.line_total.toFixed(2)}</td></tr>
   `).join('');
   document.getElementById('receipt').innerHTML = `
+    <div class="checkmark"><svg viewBox="0 0 24 24" fill="none" stroke="#2f6f2f" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg></div>
     <h2>KAFA!N AND CO</h2>
     <div class="center">Order #${order.daily_number}</div>
     <div class="center">${new Date(order.created_at).toLocaleString()}</div>
@@ -207,12 +238,89 @@ function showReceipt(order) {
     <div class="center" style="margin-top:10px;font-weight:bold;">⏳ Awaiting payment confirmation</div>
     <div class="center" style="font-size:11px;">Take this to Finance to confirm Cash or M-Pesa</div>
   `;
+  window._lastOrder = order;
+  document.getElementById('btMsg').style.display = 'none';
   document.getElementById('receiptOverlay').style.display = 'flex';
 }
 
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 document.getElementById('closeReceiptBtn').addEventListener('click', () => {
   document.getElementById('receiptOverlay').style.display = 'none';
+});
+
+// --- Bluetooth thermal printer support (ESC/POS over BLE) ---
+// Works with most generic 58mm/80mm Bluetooth thermal printers (common brands
+// like Goojprt, generic "BT Printer" units). If your specific printer doesn't
+// show up or fails to connect, use the regular Print button instead.
+const PRINTER_SERVICE = '000018f0-0000-1000-8000-00805f9b34fb';
+const PRINTER_CHAR = '00002af1-0000-1000-8000-00805f9b34fb';
+
+function buildEscPosReceipt(order) {
+  const enc = new TextEncoder();
+  const empName = order.employee_name || document.querySelector('#employee option:checked')?.textContent || '';
+  let lines = [];
+  lines.push('\x1B\x40'); // init
+  lines.push('\x1B\x61\x01'); // center
+  lines.push('\x1B\x21\x30'); // double size
+  lines.push('KAFA!N AND CO\n');
+  lines.push('\x1B\x21\x00'); // normal size
+  lines.push('Order #' + order.daily_number + '\n');
+  lines.push(new Date(order.created_at).toLocaleString() + '\n');
+  lines.push('Served by: ' + empName + '\n');
+  lines.push('--------------------------------\n');
+  lines.push('\x1B\x61\x00'); // left align
+  order.items.forEach(it => {
+    const left = `${it.quantity}x ${it.name}`;
+    const right = 'KSh ' + it.line_total.toFixed(2);
+    const pad = Math.max(1, 32 - left.length - right.length);
+    lines.push(left + ' '.repeat(pad) + right + '\n');
+  });
+  lines.push('--------------------------------\n');
+  lines.push(`Subtotal${' '.repeat(Math.max(1,24-('KSh '+order.subtotal.toFixed(2)).length))}KSh ${order.subtotal.toFixed(2)}\n`);
+  lines.push(`Tax${' '.repeat(Math.max(1,29-('KSh '+order.tax.toFixed(2)).length))}KSh ${order.tax.toFixed(2)}\n`);
+  lines.push('\x1B\x21\x10'); // bold-ish
+  lines.push(`TOTAL${' '.repeat(Math.max(1,27-('KSh '+order.total.toFixed(2)).length))}KSh ${order.total.toFixed(2)}\n`);
+  lines.push('\x1B\x21\x00');
+  lines.push('\n\x1B\x61\x01');
+  lines.push('AWAITING PAYMENT CONFIRMATION\n');
+  lines.push('Take to Finance for Cash/M-Pesa\n');
+  lines.push('\n\n\n');
+  lines.push('\x1D\x56\x00'); // cut paper
+  const text = lines.join('');
+  return enc.encode(text);
+}
+
+document.getElementById('btPrintBtn').addEventListener('click', async () => {
+  const btMsg = document.getElementById('btMsg');
+  btMsg.style.display = 'block';
+  if (!window._lastOrder) { btMsg.textContent = 'No order to print yet.'; btMsg.className = 'msg err'; return; }
+  if (!navigator.bluetooth) {
+    btMsg.textContent = 'Bluetooth printing needs Chrome on Android. Use Print instead.';
+    btMsg.className = 'msg err';
+    return;
+  }
+  try {
+    btMsg.textContent = 'Choose your printer…';
+    btMsg.className = 'msg';
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [PRINTER_SERVICE] }],
+      optionalServices: [PRINTER_SERVICE],
+    });
+    btMsg.textContent = 'Connecting…';
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(PRINTER_SERVICE);
+    const characteristic = await service.getCharacteristic(PRINTER_CHAR);
+    const data = buildEscPosReceipt(window._lastOrder);
+    const chunkSize = 100;
+    for (let i = 0; i < data.length; i += chunkSize) {
+      await characteristic.writeValue(data.slice(i, i + chunkSize));
+    }
+    btMsg.textContent = '✅ Sent to printer';
+    btMsg.className = 'msg ok';
+  } catch (err) {
+    btMsg.textContent = 'Could not print: ' + (err.message || 'printer not found. Use Print instead.');
+    btMsg.className = 'msg err';
+  }
 });
 
 document.getElementById('checkout').addEventListener('click', async () => {
