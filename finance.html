@@ -73,7 +73,7 @@ document.getElementById('enterBtn').addEventListener('click', async () => {
   const gateMsg = document.getElementById('gateMsg');
   if (!financeKey) { gateMsg.textContent = 'Enter the passcode first.'; gateMsg.className = 'msg err'; return; }
   try {
-    await api('/api/finance/pending');
+    await api('/api/finance');
     sessionStorage.setItem('kafain_finance_key', financeKey);
     enterDashboard();
   } catch (err) {
@@ -90,7 +90,7 @@ function enterDashboard() {
 
 async function loadPending() {
   const list = document.getElementById('list');
-  const orders = await api('/api/finance/pending');
+  const orders = await api('/api/finance');
   if (!orders.length) {
     list.innerHTML = '<div class="empty">No pending receipts right now.</div>';
     return;
@@ -115,7 +115,7 @@ async function loadPending() {
 
 window.confirmPay = async function(orderId, method) {
   try {
-    await api('/api/finance/confirm', { method: 'POST', body: JSON.stringify({ order_id: orderId, payment_method: method }) });
+    await api('/api/finance', { method: 'POST', body: JSON.stringify({ order_id: orderId, payment_method: method }) });
     loadPending();
   } catch (err) {
     alert(err.message);
@@ -123,7 +123,7 @@ window.confirmPay = async function(orderId, method) {
 };
 
 if (financeKey) {
-  api('/api/finance/pending').then(enterDashboard).catch(() => {
+  api('/api/finance').then(enterDashboard).catch(() => {
     sessionStorage.removeItem('kafain_finance_key');
   });
 }
