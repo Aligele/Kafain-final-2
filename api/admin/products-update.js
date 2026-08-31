@@ -1,7 +1,8 @@
-import { supabase, readBody } from "../../lib/db.js";
+import { requireAdmin, supabase, readBody } from "../../lib/db.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!requireAdmin(req, res)) return;
   try {
     const { id, price, active, add_stock_grams } = await readBody(req);
     if (!id) return res.status(400).json({ error: "id is required" });

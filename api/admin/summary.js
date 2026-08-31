@@ -1,7 +1,8 @@
-import { supabase, todayDate } from "../../lib/db.js";
+import { requireAdmin, supabase, todayDate } from "../../lib/db.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  if (!requireAdmin(req, res)) return;
   try {
     const date = req.query.date || todayDate();
     const start = date + "T00:00:00", end = date + "T23:59:59.999";
